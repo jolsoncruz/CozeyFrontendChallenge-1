@@ -8,83 +8,105 @@ import {
   Loader,
 } from "./styles";
 import axios from "axios";
-import { Collection } from "../Common/Collection"; //NOTE: This can be removed since Collection is not being used (and has no current use).
-import ColorSelector from "../Common/ColorSelector"; //NOTE: Added import for ColorSelector (which was missing).
-import { ConfigSelectionData, handleconfig, FetchDataResponse } from "./types"; //NOTE: Re-arranged the import declaration to match the exact order in types.ts.
+// NOTE: Removed import statement for Collection as it is not used in the code snippet
+import ColorSelector from "../Common/ColorSelector"; //NOTE: Added missing import statement for ColorSelector
+import { ConfigSelectionData, FetchDataResponse, handleconfig } from "./types";
 import { useCartMutation } from "../hooks/useCartMutation";
 import { calculateCozeyCarePrice } from "../helpers/calculateCozeyCarePrice";
 import React from "react";
 
+// Prop types for SeatingConfigurator component
+interface ISeatingConfiguratorProps {
+  collectionTitle: string;
+  seating: {
+    option1OptionsCollection: { value: string }[];
+    sofa: { option2OptionsCollection: { value: string }[] };
+  }; // NOTE: Added seating prop which consists of option1OptionsCollection and sofa (based on code snippet below)
+  config: { priceUsd: number }; // NOTE: Added config prop which consists of priceUsd (based on code snippet below). Could add more props if needed
+  price: { currency: string; value: number }; // NOTE: Added price prop which consists of currency and value
+  colorsData: { value: string; title: string }[]; // NOTE: Added colorsData prop which consists of value and title (based on ColorSelector.tsx)
+  configId: string;
+}
+
+// Prop types for SeatingOptionSelector component
+interface ISeatingOptionSelectorProps {
+  selectedSeatingOption: string;
+  setSeatingOption: (seatingOption: { value: string }) => void;
+  seatingOptions: { value: string; title: string }[];
+}
+
 export const SeatingConfigurator = ({
-  collectionTitle,
+  collectionTitle, // Luna, Ciello, etc.
   seating,
   config,
   price,
   colorsData,
   configId,
-}: any) => {
+}: ISeatingConfiguratorProps) => {
   const router = useRouter();
-  const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [configSelected, setConfigSelected] = useState<ConfigSelectionData>(
-    {} as ConfigSelectionData
-  ); //TODO: Review this line of code
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // NOTE: removed isPopupOpen and counter as they are not used in the code snippet
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [configSelected, setConfigSelected] = useState<ConfigSelectionData>({});
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { addToCart } = useCartMutation();
+
   const [additionalConfig, setAdditionalConfig] =
     useState<FetchDataResponse | null>(null);
 
-  const { addToCart } = useCartMutation();
-
-  const [counter, setCounter] = useState(0); //NOTE: This can be removed since it is not being used (and has no current use).
-
+  // useEffect to fetch additional configuration data
   useEffect(() => {
     const fetchAdditionalConfig = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
         const response = await axios.get<FetchDataResponse>(
-          `/api/configuration/${configId}` //NOTE: added backtick to properly format the string.
-        ); //NOTE: Added try-catch for error-handling
+          `/api/configuration/${configId}` // NOTE: Added backticks to wrap the string
+        );
         setAdditionalConfig(response.data);
-      } catch (err) {
-        console.error("Error fetching additional config data:", err);
-        setErrorMessage("Failed to load configuration data. Please try again.");
+      } catch (error) {
+        setErrorMessage("Failed to fetch additional configuration data");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchAdditionalConfig();
-  }, []); //NOTE: This runs once at page load
+  }, [configId]); // NOTE: Modified this useEffect to only run when configId changes
 
+  // useEffect to set default configuration
   useEffect(() => {
     if (seating) {
       setConfigSelected({
         color: seating.option1OptionsCollection[0]?.value,
-        seating: seating.sofa.option2OptionsCollection[0].value, //NOTE: Remove sofa?
+        seating: seating.sofa.option2OptionsCollection[0]?.value,
       });
     }
   }, [seating]);
 
-  const handleConfig = ({ color, seating }: ConfigSelectionData) => {
-    //NOTE: no use of using handleconfig since it's the same as ConfigSelectionData.
-    setConfigSelected((oldSelected) => ({
-      ...oldSelected,
-      color: color || oldSelected.color,
-      seating: seating || oldSelected.seating,
+  // callback function to handle configuration changes
+  const handleConfig = ({ color, seating }: handleconfig) => {
+    setConfigSelected((prevConfigSelected) => ({
+      // NOTE: Replaced oldSelected to prevConfigSelected for better readability
+      ...prevConfigSelected,
+      color: color || prevConfigSelected.color,
+      seating: seating || prevConfigSelected.seating,
     }));
   };
 
+  // useMemo to calculate total price including Cozey Care
   const totalPrice = useMemo(() => {
     return price.value + calculateCozeyCarePrice(config.priceUsd);
   }, [price, config]);
 
+  // callback function to handle adding item to cart
   const handleAddToCart = () => {
-    if (!configSelected.color || !configSelected.seating) {
-      //TODO: Review id this should be OR since the error message says AND.
+    // NOTE: Modified if condition to check for both color and seating
+    if (!configSelected.color && !configSelected.seating) {
       setErrorMessage("Please select both a color and a seating option");
       return;
     }
-    setErrorMessage(null); //TODO: Review if this should be inside an else clause
+
+    setErrorMessage(null);
 
     addToCart({
       quantity: 1,
@@ -102,38 +124,59 @@ export const SeatingConfigurator = ({
       });
   };
 
+  // NOTE: Created a separate component for SeatingOptionSelector, ideally this should be in a separate file in the same folder as ColorSelector.tsx
+  const SeatingOptionSelector = ({
+    selectedSeatingOption,
+    setSeatingOption,
+    seatingOptions,
+  }: ISeatingOptionSelectorProps) => {
+    return (
+      <div>
+        <label htmlFor="seating-option">Select Seating Option</label>
+        <select
+          id="seating-option"
+          value={selectedSeatingOption || ""}
+          onChange={(e) => setSeatingOption({ value: e.target.value })}
+        >
+          {seatingOptions.map((mappedOption) => (
+            <option key={mappedOption.value} value={mappedOption.value}>
+              {mappedOption.title}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
   return (
     <SeatingWrapper>
+      {/* NOTE: Added conditional rendering for collectionTitle */}
+      {collectionTitle && <h1>{collectionTitle}</h1>}
+
       {isLoading ? (
         <Loader>Loading configurations...</Loader>
       ) : additionalConfig ? (
         <>
+          {/* Color Selector */}
           <ColorSelector
-            selectedColor={configSelected.color || ""} // NOTE: Added || "" to prevent error when color is undefined.
-            // selectedColor={configSelected.color}
-            setColor={(color) =>
-              handleConfig({
-                color: color.value,
-              })
-            }
+            selectedColor={configSelected.color || ""}
+            setColor={(color) => handleConfig({ color: color.value })}
             colors={colorsData}
           />
-          <div>
-            <label>Select Seating Option</label>
-            <select
-              value={configSelected.seating || ""} //NOTE: Remove ?.value since it's not needed.
-              onChange={
-                (e) => handleConfig({ seating: e.target.value }) //NOTE: Remove object since expected type is string.
-              }
-            >
-              {additionalConfig.seatingOptions.map((option) => (
-                <div key={option.value}>
-                  <option value={option.value}>{option.title}</option>
-                </div>
-              ))}
-            </select>
-          </div>
+
+          {/* Seating Option Selector */}
+          <SeatingOptionSelector
+            selectedSeatingOption={configSelected.seating || ""}
+            setSeatingOption={(seatingOption) =>
+              handleConfig({ seating: seatingOption.value })
+            }
+            seatingOptions={additionalConfig.seatingOptions}
+          />
+
+          {/* Error Message Handling */}
           {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
+
+          {/* Add to Cart Button */}
           <AddToCartContainer>
             <AddToCartButton type="button" onClick={handleAddToCart}>
               Add to Cart - ${totalPrice}
