@@ -10,6 +10,7 @@ import {
 import axios from "axios";
 // NOTE: Removed import statement for Collection as it is not used in the code snippet
 import ColorSelector from "../Common/ColorSelector"; //NOTE: Added missing import statement for ColorSelector
+import SeatingOptionSelector from "../Common/SeatingOptionSelector"; //NOTE: Created a separate component for SeatingOptionSelector and placed it in the same folder as CodeSelector.tsx.
 import { ConfigSelectionData, FetchDataResponse, handleconfig } from "./types";
 import { useCartMutation } from "../hooks/useCartMutation";
 import { calculateCozeyCarePrice } from "../helpers/calculateCozeyCarePrice";
@@ -26,13 +27,6 @@ interface ISeatingConfiguratorProps {
   price: { currency: string; value: number }; // NOTE: Added price prop which consists of currency and value
   colorsData: { value: string; title: string }[]; // NOTE: Added colorsData prop which consists of value and title (based on ColorSelector.tsx)
   configId: string;
-}
-
-// Prop types for SeatingOptionSelector component
-interface ISeatingOptionSelectorProps {
-  selectedSeatingOption: string;
-  setSeatingOption: (seatingOption: { value: string }) => void;
-  seatingOptions: { value: string; title: string }[];
 }
 
 export const SeatingConfigurator = ({
@@ -124,30 +118,7 @@ export const SeatingConfigurator = ({
       });
   };
 
-  // NOTE: Created a separate component for SeatingOptionSelector, ideally this should be in a separate file in the same folder as ColorSelector.tsx
-  const SeatingOptionSelector = ({
-    selectedSeatingOption,
-    setSeatingOption,
-    seatingOptions,
-  }: ISeatingOptionSelectorProps) => {
-    return (
-      <div>
-        <label htmlFor="seating-option">Select Seating Option</label>
-        <select
-          id="seating-option"
-          value={selectedSeatingOption || ""}
-          onChange={(e) => setSeatingOption({ value: e.target.value })}
-        >
-          {seatingOptions.map((mappedOption) => (
-            <option key={mappedOption.value} value={mappedOption.value}>
-              {mappedOption.title}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  };
-
+  // NOTE: Created a separate component for SeatingOptionSelector and placed it in the same folder as CodeSelector.tsx.
   return (
     <SeatingWrapper>
       {/* NOTE: Added conditional rendering for collectionTitle */}
