@@ -41,6 +41,7 @@ export const SeatingConfigurator = ({
 
   // NOTE: removed isPopupOpen and counter as they are not used in the code snippet
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isAddingToCart, setIsAddingToCart] = useState<boolean>(false);
   const [configSelected, setConfigSelected] = useState<ConfigSelectionData>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { addToCart } = useCartMutation();
@@ -58,6 +59,7 @@ export const SeatingConfigurator = ({
         );
         setAdditionalConfig(response.data);
       } catch (error) {
+        console.error("Fetch error:", error); // NOTE: Added console.error to log the error
         setErrorMessage("Failed to fetch additional configuration data");
       } finally {
         setIsLoading(false);
@@ -79,11 +81,11 @@ export const SeatingConfigurator = ({
 
   // callback function to handle configuration changes
   const handleConfig = ({ color, seating }: handleconfig) => {
-    setConfigSelected((prevConfigSelected) => ({
-      // NOTE: Replaced oldSelected to prevConfigSelected for better readability
-      ...prevConfigSelected,
-      color: color || prevConfigSelected.color,
-      seating: seating || prevConfigSelected.seating,
+    setConfigSelected((prev) => ({
+      // NOTE: Replaced oldSelected to prev for better readability
+      ...prev,
+      color: color || prev.color,
+      seating: seating || prev.seating,
     }));
   };
 
@@ -93,29 +95,33 @@ export const SeatingConfigurator = ({
   }, [price, config]);
 
   // callback function to handle adding item to cart
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     // NOTE: Modified if condition to check for both color and seating
     if (!configSelected.color && !configSelected.seating) {
       setErrorMessage("Please select both a color and a seating option");
       return;
     }
 
+    setIsAddingToCart(true); // NOTE: Set isAddingToCart to true if the above condition is met
     setErrorMessage(null);
 
-    addToCart({
-      quantity: 1,
-      variantId: configId,
-      options: {
-        color: configSelected.color,
-        seating: configSelected.seating,
-      },
-    })
-      .then(() => {
-        router.push("/cart");
-      })
-      .catch(() => {
-        setErrorMessage("Failed to add item to cart");
+    // NOTE: Added try-catch block to handle errors
+    try {
+      await addToCart({
+        quantity: 1,
+        variantId: configId,
+        options: {
+          color: configSelected.color,
+          seating: configSelected.seating,
+        },
       });
+      router.push("/cart");
+    } catch (error) {
+      setErrorMessage("Failed to add item to cart");
+      console.error("Add to cart error:", error); // NOTE: Added console.error to log the error
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   // NOTE: Created a separate component for SeatingOptionSelector and placed it in the same folder as CodeSelector.tsx.
@@ -149,8 +155,14 @@ export const SeatingConfigurator = ({
 
           {/* Add to Cart Button */}
           <AddToCartContainer>
-            <AddToCartButton type="button" onClick={handleAddToCart}>
-              Add to Cart - ${totalPrice}
+            <AddToCartButton
+              type="button"
+              onClick={handleAddToCart}
+              disabled={isAddingToCart} // NOTE: Disabled button if isAddingToCart is true
+            >
+              {isAddingToCart
+                ? "Adding to Cart..."
+                : `Add to Cart - $${totalPrice}`}
             </AddToCartButton>
           </AddToCartContainer>
         </>
